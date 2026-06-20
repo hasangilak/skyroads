@@ -3,6 +3,8 @@ import { Canvas, useFrame } from '@react-three/fiber/native';
 import * as THREE from 'three';
 
 import Ship from './Ship';
+import Starfield from './Starfield';
+import { hapticCrash, hapticJump, hapticPickup } from './haptics';
 import { isSolid, tileAt, Tile, type Level } from './level';
 import type { Planet } from './planets';
 import {
@@ -53,6 +55,7 @@ interface GameState {
   speed: number;
   fuel: number;
   bank: number; // visual roll while strafing
+  shake: number; // camera shake amount (decays)
   grounded: boolean;
   status: Status;
   lastFuelKey: number; // de-dupes fuel pickups per cell
@@ -73,6 +76,8 @@ const COLOR_BOOST = new THREE.Color(COLORS.boost);
 const COLOR_LAVA = new THREE.Color(COLORS.lava);
 const COLOR_FUEL = new THREE.Color(COLORS.fuel);
 
+const TRAIL_COUNT = 40; // points in the thruster trail
+
 function freshState(): GameState {
   return {
     x: 0,
@@ -83,6 +88,7 @@ function freshState(): GameState {
     speed: BASE_SPEED,
     fuel: FUEL_MAX,
     bank: 0,
+    shake: 0,
     grounded: true,
     status: 'playing',
     lastFuelKey: -1,
@@ -106,6 +112,18 @@ function Scene({ planet, level, input, onEnd, onStats }: SceneProps) {
   // Themed normal-road colours for this planet.
   const colorA = useMemo(() => new THREE.Color(planet.theme.roadA), [planet]);
   const colorB = useMemo(() => new THREE.Color(planet.theme.roadB), [planet]);
+
+  // Thruster trail: a ring buffer of recent tail positions.
+  const trailRef = useRef<THREE.Points>(null);
+  const trailHead = useRef(0);
+  const trailPositions = useMemo(() => {
+    const a = new Float32Array(TRAIL_COUNT * 3);
+    for (let i = 0; i < TRAIL_COUNT; i++) {
+      a[i * 3 + 1] = PLAYER_Y;
+      a[i * 3 + 2] = -1;
+    }
+    return a;
+  }, []);
 
   // Re-place every visible road instance, routing each tile to the lit or the
   // glowing mesh and coloring it by type.
@@ -179,6 +197,10 @@ function Scene({ planet, level, input, onEnd, onStats }: SceneProps) {
   const end = (g: GameState, reason: EndReason) => {
     if (g.status !== 'playing') return;
     g.status = reason;
+    if (reason !== 'win') {
+      g.shake = 0.55;
+      hapticCrash();
+    }
     onEnd(reason);
   };
 
@@ -223,6 +245,7 @@ function Scene({ planet, level, input, onEnd, onStats }: SceneProps) {
     if (input.jump && g.grounded) {
       g.vy = planet.jumpV;
       g.grounded = false;
+      hapticJump();
     }
     input.jump = false;
 
@@ -253,6 +276,7 @@ function Scene({ planet, level, input, onEnd, onStats }: SceneProps) {
         if (key !== g.lastFuelKey) {
           g.lastFuelKey = key;
           g.fuel = Math.min(FUEL_MAX, g.fuel + FUEL_PICKUP);
+          hapticPickup();
         }
       }
     } else {
@@ -298,16 +322,39 @@ function Scene({ planet, level, input, onEnd, onStats }: SceneProps) {
       playerRef.current.rotation.z = g.bank;
     }
 
+    // Stamp the current tail position into the trail ring buffer.
+    const th = trailHead.current;
+    trailPositions[th * 3] = g.x;
+    trailPositions[th * 3 + 1] = PLAYER_Y + g.py + 0.05;
+    trailPositions[th * 3 + 2] = g.z - 1.0;
+    trailHead.current = (th + 1) % TRAIL_COUNT;
+    if (trailRef.current) {
+      trailRef.current.geometry.attributes.position.needsUpdate = true;
+    }
+
     updateRoad(g);
 
     // Chase camera: locked behind in z, eased in x / y.
-    const cam = state.camera;
+    const cam = state.camera as THREE.PerspectiveCamera;
     const tx = g.x * 0.4;
     const ty = CAMERA_HEIGHT + Math.max(0, g.py) * 0.4;
     cam.position.x += (tx - cam.position.x) * 0.12;
     cam.position.y += (ty - cam.position.y) * 0.12;
     cam.position.z = g.z - CAMERA_BACK;
+
+    // Speed FOV kick — widens as you go faster (and on boost pads).
+    const speedT = clamp((g.speed - BASE_SPEED) / (MAX_SPEED - BASE_SPEED), 0, 1.4);
+    cam.fov += (60 + speedT * 12 - cam.fov) * 0.08;
+    cam.updateProjectionMatrix();
+
     cam.lookAt(g.x * 0.4, 0.6, g.z + CAMERA_LOOK_AHEAD);
+
+    // Crash shake (after aim, so it reads as a jolt).
+    if (g.shake > 0) {
+      cam.position.x += (Math.random() - 0.5) * g.shake;
+      cam.position.y += (Math.random() - 0.5) * g.shake;
+      g.shake = Math.max(0, g.shake - dt * 1.2);
+    }
   });
 
   const tileSize = TILE - TILE_GAP;
@@ -319,6 +366,8 @@ function Scene({ planet, level, input, onEnd, onStats }: SceneProps) {
 
       <ambientLight intensity={0.65} />
       <directionalLight position={[4, 10, 6]} intensity={1.1} />
+
+      <Starfield />
 
       {/* Lit road tiles (normal + ice). */}
       <instancedMesh
@@ -339,6 +388,24 @@ function Scene({ planet, level, input, onEnd, onStats }: SceneProps) {
         <boxGeometry args={[tileSize, TILE_THICKNESS, tileSize]} />
         <meshBasicMaterial toneMapped={false} />
       </instancedMesh>
+
+      {/* Thruster trail. */}
+      <points ref={trailRef} frustumCulled={false}>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[trailPositions, 3]} />
+        </bufferGeometry>
+        <pointsMaterial
+          color={COLORS.engine}
+          size={0.22}
+          sizeAttenuation
+          transparent
+          opacity={0.75}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          toneMapped={false}
+          fog={false}
+        />
+      </points>
 
       {/* The craft. */}
       <group ref={playerRef}>
