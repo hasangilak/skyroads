@@ -4,13 +4,14 @@ import { StyleSheet, Text, View } from 'react-native';
 import { FUEL_MAX } from './constants';
 
 interface HudProps {
+  planetName: string;
   distance: number;
   total: number;
   fuel: number;
 }
 
-// Top-of-screen heads-up display: distance / progress and a fuel gauge.
-export default function Hud({ distance, total, fuel }: HudProps) {
+// Top-of-screen heads-up display: planet, distance / progress and a fuel gauge.
+export default function Hud({ planetName, distance, total, fuel }: HudProps) {
   const progress = Math.min(1, total > 0 ? distance / total : 0);
   const fuelPct = Math.max(0, Math.min(1, fuel / FUEL_MAX));
   const fuelColor =
@@ -18,7 +19,7 @@ export default function Hud({ distance, total, fuel }: HudProps) {
 
   return (
     <View style={styles.root} pointerEvents="none">
-      <Text style={styles.title}>SKYROADS</Text>
+      <Text style={styles.title}>{planetName}</Text>
       <Text style={styles.distance}>
         {distance} / {total} m
       </Text>

@@ -6,7 +6,10 @@ interface OverlayProps {
   reason: EndReason;
   distance: number;
   total: number;
-  onRestart: () => void;
+  hasNext: boolean;
+  onRetry: () => void;
+  onNext: () => void;
+  onMenu: () => void;
 }
 
 const TITLES: Record<EndReason, string> = {
@@ -15,12 +18,38 @@ const TITLES: Record<EndReason, string> = {
   fuel: 'OUT OF FUEL',
 };
 
-// Full-screen end-of-run panel, with a restart button.
+function Button({
+  label,
+  primary,
+  onPress,
+}: {
+  label: string;
+  primary?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.btn,
+        primary && styles.btnPrimary,
+        pressed && styles.btnPressed,
+      ]}
+    >
+      <Text style={styles.btnText}>{label}</Text>
+    </Pressable>
+  );
+}
+
+// Full-screen end-of-run panel with context-appropriate actions.
 export default function Overlay({
   reason,
   distance,
   total,
-  onRestart,
+  hasNext,
+  onRetry,
+  onNext,
+  onMenu,
 }: OverlayProps) {
   const won = reason === 'win';
   return (
@@ -31,12 +60,15 @@ export default function Overlay({
       <Text style={styles.sub}>
         {won ? `You cleared all ${total} m` : `You reached ${distance} m`}
       </Text>
-      <Pressable
-        style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
-        onPress={onRestart}
-      >
-        <Text style={styles.btnText}>RESTART</Text>
-      </Pressable>
+
+      <View style={styles.buttons}>
+        {won && hasNext ? (
+          <Button label="NEXT PLANET" primary onPress={onNext} />
+        ) : (
+          <Button label={won ? 'REPLAY' : 'RETRY'} primary onPress={onRetry} />
+        )}
+        <Button label="MENU" onPress={onMenu} />
+      </View>
     </View>
   );
 }
@@ -68,21 +100,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 10,
   },
-  btn: {
+  buttons: {
+    flexDirection: 'row',
+    gap: 14,
     marginTop: 32,
-    paddingHorizontal: 44,
+  },
+  btn: {
+    paddingHorizontal: 28,
     paddingVertical: 16,
     borderRadius: 14,
     backgroundColor: 'rgba(120, 135, 220, 0.4)',
     borderWidth: 1,
     borderColor: 'rgba(160, 175, 255, 0.7)',
   },
+  btnPrimary: {
+    backgroundColor: 'rgba(255, 107, 53, 0.4)',
+    borderColor: 'rgba(255, 170, 120, 0.8)',
+  },
   btnPressed: {
-    backgroundColor: 'rgba(160, 175, 255, 0.6)',
+    opacity: 0.7,
   },
   btnText: {
     color: '#ffffff',
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
     letterSpacing: 1,
   },
