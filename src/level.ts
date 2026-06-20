@@ -7,26 +7,31 @@ import { LANES } from './constants';
 // construction: cruise straights, two-row jump gaps (always preceded by a
 // run-up and followed by a landing), and narrowing corridors.
 
-function fullRow() {
+export interface Level {
+  grid: boolean[][];
+  length: number;
+}
+
+function fullRow(): boolean[] {
   return new Array(LANES).fill(true);
 }
 
-function narrowRow(lo, hi) {
+function narrowRow(lo: number, hi: number): boolean[] {
   const row = new Array(LANES).fill(false);
   for (let l = lo; l <= hi; l++) row[l] = true;
   return row;
 }
 
-export function generateLevel(totalRows = 420) {
-  const grid = [];
+export function generateLevel(totalRows = 420): Level {
+  const grid: boolean[][] = [];
 
-  const addFull = (n) => {
+  const addFull = (n: number) => {
     for (let i = 0; i < n; i++) grid.push(fullRow());
   };
-  const addGap = (n) => {
+  const addGap = (n: number) => {
     for (let i = 0; i < n; i++) grid.push(new Array(LANES).fill(false));
   };
-  const addNarrow = (lo, hi, n) => {
+  const addNarrow = (lo: number, hi: number, n: number) => {
     for (let i = 0; i < n; i++) grid.push(narrowRow(lo, hi));
   };
 
@@ -58,7 +63,7 @@ export function generateLevel(totalRows = 420) {
 }
 
 // True if the tile at (row, lane) is solid ground.
-export function isSolid(grid, row, lane) {
+export function isSolid(grid: boolean[][], row: number, lane: number): boolean {
   if (row < 0) return true; // treat pre-start as ground
   if (row >= grid.length) return false;
   if (lane < 0 || lane >= LANES) return false;

@@ -37,7 +37,9 @@ export const COLORS = {
   roadB: '#2b3870',
   player: '#ff6b35',
   cockpit: '#ffd23f',
-};
+} as const;
 
-export const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
-export const lerp = (a, b, t) => a + (b - a) * t;
+export const clamp = (v: number, lo: number, hi: number): number =>
+  v < lo ? lo : v > hi ? hi : v;
+
+export const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;

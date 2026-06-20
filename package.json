@@ -4,13 +4,15 @@
   "main": "index.js",
   "dependencies": {
     "@react-three/fiber": "^9.6.1",
+    "@types/react": "~19.2.14",
     "expo": "~56.0.12",
     "expo-gl": "~56.0.5",
     "expo-status-bar": "~56.0.4",
     "react": "19.2.3",
     "react-native": "0.85.3",
     "react-native-gesture-handler": "~2.31.1",
-    "three": "^0.184.0"
+    "three": "^0.184.0",
+    "typescript": "~6.0.3"
   },
   "scripts": {
     "start": "expo start",
@@ -18,5 +20,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web"
   },
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "@types/three": "^0.184.1"
+  }
 }
