@@ -4,6 +4,7 @@ import * as THREE from 'three';
 
 import Ship from './Ship';
 import { isSolid, tileAt, Tile, type Level } from './level';
+import type { Planet } from './planets';
 import {
   LANES,
   HALF,
@@ -18,8 +19,6 @@ import {
   STRAFE_SPEED,
   STEER_GRIP,
   ICE_GRIP,
-  JUMP_V,
-  GRAVITY,
   FUEL_MAX,
   FUEL_DRAIN,
   FUEL_BOOST_DRAIN,
@@ -62,14 +61,13 @@ interface GameState {
 }
 
 interface SceneProps {
+  planet: Planet;
   level: Level;
   input: Input;
   onEnd: (reason: EndReason) => void;
   onStats: (distance: number, fuel: number) => void;
 }
 
-const COLOR_A = new THREE.Color(COLORS.roadA);
-const COLOR_B = new THREE.Color(COLORS.roadB);
 const COLOR_ICE = new THREE.Color(COLORS.ice);
 const COLOR_BOOST = new THREE.Color(COLORS.boost);
 const COLOR_LAVA = new THREE.Color(COLORS.lava);
@@ -98,13 +96,16 @@ function isGlowTile(t: Tile): boolean {
 }
 
 // The actual scene + game loop. Lives inside <Canvas>.
-function Scene({ level, input, onEnd, onStats }: SceneProps) {
+function Scene({ planet, level, input, onEnd, onStats }: SceneProps) {
   const game = useRef<GameState>(freshState());
   const litRef = useRef<THREE.InstancedMesh>(null); // normal + ice (lit)
   const glowRef = useRef<THREE.InstancedMesh>(null); // boost + lava + fuel (unlit/glowing)
   const playerRef = useRef<THREE.Group>(null);
 
   const dummy = useMemo(() => new THREE.Object3D(), []);
+  // Themed normal-road colours for this planet.
+  const colorA = useMemo(() => new THREE.Color(planet.theme.roadA), [planet]);
+  const colorB = useMemo(() => new THREE.Color(planet.theme.roadB), [planet]);
 
   // Re-place every visible road instance, routing each tile to the lit or the
   // glowing mesh and coloring it by type.
@@ -147,8 +148,8 @@ function Scene({ level, input, onEnd, onStats }: SceneProps) {
             t === Tile.Ice
               ? COLOR_ICE
               : (row + lane) % 2 === 0
-                ? COLOR_A
-                : COLOR_B
+                ? colorA
+                : colorB
           );
           iLit++;
         }
@@ -220,13 +221,13 @@ function Scene({ level, input, onEnd, onStats }: SceneProps) {
 
     // Jump (edge-triggered; only from the ground).
     if (input.jump && g.grounded) {
-      g.vy = JUMP_V;
+      g.vy = planet.jumpV;
       g.grounded = false;
     }
     input.jump = false;
 
-    // Gravity.
-    g.vy -= GRAVITY * dt;
+    // Gravity (per-planet).
+    g.vy -= planet.gravity * dt;
     g.py += g.vy * dt;
 
     // Ground / gap / hazard resolution at the landing cell.
@@ -286,7 +287,7 @@ function Scene({ level, input, onEnd, onStats }: SceneProps) {
       g.z += g.speed * 0.6 * dt;
     } else {
       // crash / fuel: tumble into the void.
-      g.vy -= GRAVITY * dt;
+      g.vy -= planet.gravity * dt;
       g.py += g.vy * dt;
       g.z += g.speed * 0.25 * dt;
       g.bank += dt * 2;
@@ -313,8 +314,8 @@ function Scene({ level, input, onEnd, onStats }: SceneProps) {
 
   return (
     <>
-      <color attach="background" args={[COLORS.bg]} />
-      <fog attach="fog" args={[COLORS.bg, 25, 88]} />
+      <color attach="background" args={[planet.theme.bg]} />
+      <fog attach="fog" args={[planet.theme.bg, 25, 88]} />
 
       <ambientLight intensity={0.65} />
       <directionalLight position={[4, 10, 6]} intensity={1.1} />
@@ -349,6 +350,7 @@ function Scene({ level, input, onEnd, onStats }: SceneProps) {
 
 // Memoized so HUD/state updates in the parent never reconcile the 3D tree.
 const CanvasView = React.memo(function CanvasView({
+  planet,
   level,
   input,
   onEnd,
@@ -364,7 +366,13 @@ const CanvasView = React.memo(function CanvasView({
         position: [0, CAMERA_HEIGHT, -CAMERA_BACK],
       }}
     >
-      <Scene level={level} input={input} onEnd={onEnd} onStats={onStats} />
+      <Scene
+        planet={planet}
+        level={level}
+        input={input}
+        onEnd={onEnd}
+        onStats={onStats}
+      />
     </Canvas>
   );
 });
