@@ -44,7 +44,11 @@ export default function Game() {
   const planet = PLANETS[planetIndex];
   // A fresh level whenever we (re)start — keyed on the planet and run counter.
   const level = useMemo(
-    () => generateLevel(PLANETS[planetIndex].lengthRows),
+    () =>
+      generateLevel(
+        PLANETS[planetIndex].lengthRows,
+        PLANETS[planetIndex].difficulty
+      ),
     [runId, planetIndex]
   );
 
