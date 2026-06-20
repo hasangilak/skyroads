@@ -6,6 +6,8 @@ interface OverlayProps {
   reason: EndReason;
   distance: number;
   total: number;
+  best: number;
+  isRecord: boolean;
   hasNext: boolean;
   onRetry: () => void;
   onNext: () => void;
@@ -46,6 +48,8 @@ export default function Overlay({
   reason,
   distance,
   total,
+  best,
+  isRecord,
   hasNext,
   onRetry,
   onNext,
@@ -60,6 +64,11 @@ export default function Overlay({
       <Text style={styles.sub}>
         {won ? `You cleared all ${total} m` : `You reached ${distance} m`}
       </Text>
+      {isRecord ? (
+        <Text style={styles.record}>★ NEW BEST ★</Text>
+      ) : (
+        best > 0 && <Text style={styles.best}>Best {best} m</Text>
+      )}
 
       <View style={styles.buttons}>
         {won && hasNext ? (
@@ -99,6 +108,19 @@ const styles = StyleSheet.create({
     color: '#c7cdf0',
     fontSize: 16,
     marginTop: 10,
+  },
+  record: {
+    color: '#ffd23f',
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: 2,
+    marginTop: 10,
+  },
+  best: {
+    color: '#9aa6ff',
+    fontSize: 14,
+    marginTop: 10,
+    letterSpacing: 1,
   },
   buttons: {
     flexDirection: 'row',

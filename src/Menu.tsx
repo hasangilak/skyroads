@@ -5,11 +5,12 @@ import { gravityLabel, PLANETS } from './planets';
 
 interface MenuProps {
   unlocked: number; // number of unlocked planets
+  best: Record<string, number>; // best distance per planet name
   onSelect: (index: number) => void;
 }
 
 // Title screen / planet select. Planets unlock as you finish the previous one.
-export default function Menu({ unlocked, onSelect }: MenuProps) {
+export default function Menu({ unlocked, best, onSelect }: MenuProps) {
   return (
     <View style={styles.root}>
       <Text style={styles.title}>SKYROADS</Text>
@@ -22,6 +23,8 @@ export default function Menu({ unlocked, onSelect }: MenuProps) {
       >
         {PLANETS.map((p, i) => {
           const locked = i >= unlocked;
+          const bestDist = best[p.name] ?? 0;
+          const completed = bestDist >= p.lengthRows;
           return (
             <Pressable
               key={p.name}
@@ -46,6 +49,11 @@ export default function Menu({ unlocked, onSelect }: MenuProps) {
                     ? `Finish ${PLANETS[i - 1].name} to unlock`
                     : `${gravityLabel(p.gravity)} · ${p.lengthRows} m`}
                 </Text>
+                {!locked && bestDist > 0 && (
+                  <Text style={styles.cardBest}>
+                    {completed ? '✓ COMPLETE' : `BEST ${bestDist} m`}
+                  </Text>
+                )}
               </View>
               {locked && <Text style={styles.lock}>🔒</Text>}
             </Pressable>
@@ -121,6 +129,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 3,
     letterSpacing: 0.5,
+  },
+  cardBest: {
+    color: '#7CFFB2',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 4,
+    letterSpacing: 1,
   },
   lockedText: {
     color: '#8088b0',
