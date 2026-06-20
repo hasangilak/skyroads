@@ -140,9 +140,11 @@ function Scene({ level, input, onEnd, onDistance }: SceneProps) {
     g.speed += clamp(target - g.speed, -ACCEL * dt, ACCEL * dt);
     g.z += g.speed * dt;
 
-    // Strafe proportional to steer, clamped to the road width.
-    g.x = clamp(g.x + input.steer * STRAFE_SPEED * dt, -HALF, HALF);
-    g.bank = lerp(g.bank, input.steer * 0.35, 0.15);
+    // Strafe proportional to steer, clamped to the road width. The chase camera
+    // faces +z, so world +x is screen-LEFT — negate steer so a "right" gesture
+    // moves the craft to the right of the screen, and bank into the turn.
+    g.x = clamp(g.x - input.steer * STRAFE_SPEED * dt, -HALF, HALF);
+    g.bank = lerp(g.bank, -input.steer * 0.35, 0.15);
 
     // Jump (edge-triggered; only from the ground).
     if (input.jump && g.grounded) {
