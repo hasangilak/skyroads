@@ -1,3 +1,6 @@
+// Must run before anything pulls in three (see src/threeSingleton.ts).
+import './src/threeSingleton';
+
 import { registerRootComponent } from 'expo';
 
 import App from './App';
