@@ -26,6 +26,11 @@ export const VISIBLE_AHEAD = 70;
 export const VISIBLE_BEHIND = 6;
 export const MAX_TILES = LANES * (VISIBLE_AHEAD + VISIBLE_BEHIND);
 
+// Gesture controls (screen pixels)
+export const STEER_TRAVEL = 95; // horizontal drag for full-lock steer
+export const THROTTLE_TRAVEL = 120; // vertical drag for full boost / brake
+export const GESTURE_DEADZONE = 6; // ignore tiny jitters before input registers
+
 // Chase camera placement
 export const CAMERA_BACK = 6.5;
 export const CAMERA_HEIGHT = 3.2;

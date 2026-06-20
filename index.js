@@ -1,3 +1,6 @@
+// Gesture handler must be imported first, before any other code.
+import 'react-native-gesture-handler';
+
 // Must run before anything pulls in three (see src/threeSingleton.ts).
 import './src/threeSingleton';
 // Filters three's noisy Clock deprecation at its source (see src/threeConsole.ts).

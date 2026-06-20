@@ -4,19 +4,17 @@ import { StyleSheet, View } from 'react-native';
 import CanvasView, { type EndStatus, type Input } from './Scene';
 import { generateLevel } from './level';
 import Hud from './Hud';
-import Controls from './Controls';
+import GestureControls from './GestureControls';
 import Overlay from './Overlay';
 
 type Status = 'playing' | EndStatus;
 
 export default function Game() {
-  // Shared, stable input object mutated by Controls and read by the game loop.
+  // Shared, stable input object mutated by gestures and read by the game loop.
   const inputRef = useRef<Input>({
-    left: false,
-    right: false,
+    steer: 0,
+    throttle: 0,
     jump: false,
-    boost: false,
-    brake: false,
   });
   const input = inputRef.current;
 
@@ -35,11 +33,9 @@ export default function Game() {
   const onDistance = useCallback((d: number) => setDistRef.current(d), []);
 
   const restart = useCallback(() => {
-    input.left = false;
-    input.right = false;
+    input.steer = 0;
+    input.throttle = 0;
     input.jump = false;
-    input.boost = false;
-    input.brake = false;
     setDistance(0);
     setStatus('playing');
     setRunId((r) => r + 1); // remounts the scene with a fresh level
@@ -55,7 +51,7 @@ export default function Game() {
         onDistance={onDistance}
       />
       <Hud distance={distance} total={level.length} />
-      <Controls input={input} />
+      <GestureControls input={input} />
       {status !== 'playing' && (
         <Overlay
           status={status}

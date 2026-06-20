@@ -30,11 +30,9 @@ import {
 } from './constants';
 
 export interface Input {
-  left: boolean;
-  right: boolean;
-  jump: boolean;
-  boost: boolean;
-  brake: boolean;
+  steer: number; // -1 (full left) .. +1 (full right)
+  throttle: number; // -1 (brake) .. 0 (cruise) .. +1 (boost)
+  jump: boolean; // edge-triggered
 }
 
 export type EndStatus = 'dead' | 'won';
@@ -133,17 +131,18 @@ function Scene({ level, input, onEnd, onDistance }: SceneProps) {
 
   // One step of gameplay physics.
   const tick = (g: GameState, dt: number) => {
-    // Forward speed eases toward boost / brake / cruise target.
-    let target = BASE_SPEED;
-    if (input.boost) target = MAX_SPEED;
-    else if (input.brake) target = MIN_SPEED;
+    // Forward speed eases toward a throttle-driven target: +1 boosts to MAX,
+    // -1 brakes to MIN, 0 holds the cruise speed.
+    const target =
+      input.throttle >= 0
+        ? BASE_SPEED + input.throttle * (MAX_SPEED - BASE_SPEED)
+        : BASE_SPEED + input.throttle * (BASE_SPEED - MIN_SPEED);
     g.speed += clamp(target - g.speed, -ACCEL * dt, ACCEL * dt);
     g.z += g.speed * dt;
 
-    // Strafe left / right, clamped to the road width.
-    const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
-    g.x = clamp(g.x + dir * STRAFE_SPEED * dt, -HALF, HALF);
-    g.bank = lerp(g.bank, dir * 0.3, 0.15);
+    // Strafe proportional to steer, clamped to the road width.
+    g.x = clamp(g.x + input.steer * STRAFE_SPEED * dt, -HALF, HALF);
+    g.bank = lerp(g.bank, input.steer * 0.35, 0.15);
 
     // Jump (edge-triggered; only from the ground).
     if (input.jump && g.grounded) {
