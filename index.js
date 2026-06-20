@@ -1,5 +1,7 @@
 // Must run before anything pulls in three (see src/threeSingleton.ts).
 import './src/threeSingleton';
+// Filters three's noisy Clock deprecation at its source (see src/threeConsole.ts).
+import './src/threeConsole';
 
 import { registerRootComponent } from 'expo';
 
