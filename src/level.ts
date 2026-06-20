@@ -1,71 +1,106 @@
 import { LANES } from './constants';
 
-// A level is a grid of rows; each row is an array of `LANES` booleans where
-// `true` means a solid block and `false` means open space (a gap to fall through).
-//
-// The generator stitches together a few segment types that are passable by
-// construction: cruise straights, two-row jump gaps (always preceded by a
-// run-up and followed by a landing), and narrowing corridors.
+// A level is a grid of typed tiles. Each row has `LANES` cells.
+export enum Tile {
+  Gap = 0, // empty — fall through
+  Normal = 1, // solid ground
+  Boost = 2, // speed pad
+  Ice = 3, // slippery (low steering grip)
+  Lava = 4, // lethal on contact
+  Fuel = 5, // refuels on pickup
+}
 
 export interface Level {
-  grid: boolean[][];
+  grid: Tile[][];
   length: number;
 }
 
-function fullRow(): boolean[] {
-  return new Array(LANES).fill(true);
+const rnd = (n: number) => Math.floor(Math.random() * n);
+
+function makeRow(fill: Tile): Tile[] {
+  return new Array<Tile>(LANES).fill(fill);
 }
 
-function narrowRow(lo: number, hi: number): boolean[] {
-  const row = new Array(LANES).fill(false);
-  for (let l = lo; l <= hi; l++) row[l] = true;
-  return row;
-}
+// The generator stitches together segments that are passable by construction:
+// cruise straights (with the occasional fuel pickup), jump gaps, lava strips you
+// must clear, lava lanes you strafe around, boost pads, narrowing corridors and
+// slippery ice patches.
+export function generateLevel(totalRows = 480): Level {
+  const grid: Tile[][] = [];
 
-export function generateLevel(totalRows = 420): Level {
-  const grid: boolean[][] = [];
-
-  const addFull = (n: number) => {
-    for (let i = 0; i < n; i++) grid.push(fullRow());
-  };
-  const addGap = (n: number) => {
-    for (let i = 0; i < n; i++) grid.push(new Array(LANES).fill(false));
-  };
-  const addNarrow = (lo: number, hi: number, n: number) => {
-    for (let i = 0; i < n; i++) grid.push(narrowRow(lo, hi));
+  const add = (n: number, fill: Tile) => {
+    for (let i = 0; i < n; i++) grid.push(makeRow(fill));
   };
 
-  addFull(14); // gentle, fully solid intro
+  add(14, Tile.Normal); // gentle, fully solid intro
 
   while (grid.length < totalRows - 30) {
     const roll = Math.random();
 
-    if (roll < 0.3) {
-      // Jump: run-up, a two-row gap you must clear, then a landing strip.
-      addFull(3 + Math.floor(Math.random() * 3));
-      addGap(2);
-      addFull(3);
-    } else if (roll < 0.55) {
+    if (roll < 0.18) {
+      // Jump gap: run-up, a two-row hole, then a landing strip.
+      add(3 + rnd(3), Tile.Normal);
+      add(2, Tile.Gap);
+      add(3, Tile.Normal);
+    } else if (roll < 0.32) {
+      // Lava strip you must jump (full-width, two rows).
+      add(3 + rnd(2), Tile.Normal);
+      add(2, Tile.Lava);
+      add(3, Tile.Normal);
+    } else if (roll < 0.46) {
+      // Lava lanes to strafe around — always leaves a safe path.
+      add(3, Tile.Normal);
+      const base = makeRow(Tile.Normal);
+      const lavaA = rnd(LANES);
+      base[lavaA] = Tile.Lava;
+      if (Math.random() < 0.5) {
+        base[(lavaA + 1 + rnd(LANES - 1)) % LANES] = Tile.Lava;
+      }
+      for (let i = 0; i < 4 + rnd(3); i++) grid.push([...base]);
+    } else if (roll < 0.58) {
       // Narrowing corridor: only a few adjacent lanes remain solid.
-      const width = 2 + Math.floor(Math.random() * 2); // 2 or 3 lanes
-      const lo = Math.floor(Math.random() * (LANES - width + 1));
-      addFull(4); // room to line up
-      addNarrow(lo, lo + width - 1, 4 + Math.floor(Math.random() * 4));
+      const width = 2 + rnd(2);
+      const lo = rnd(LANES - width + 1);
+      add(4, Tile.Normal);
+      for (let i = 0; i < 4 + rnd(4); i++) {
+        const row = makeRow(Tile.Gap);
+        for (let l = lo; l < lo + width; l++) row[l] = Tile.Normal;
+        grid.push(row);
+      }
+    } else if (roll < 0.72) {
+      // Boost pad strip.
+      add(2, Tile.Normal);
+      add(3 + rnd(3), Tile.Boost);
+    } else if (roll < 0.84) {
+      // Slippery ice patch.
+      add(2, Tile.Normal);
+      add(5 + rnd(4), Tile.Ice);
     } else {
-      // Straight cruise.
-      addFull(5 + Math.floor(Math.random() * 5));
+      // Cruise straight with occasional fuel pickups.
+      const n = 5 + rnd(5);
+      for (let i = 0; i < n; i++) {
+        const row = makeRow(Tile.Normal);
+        if (Math.random() < 0.25) row[rnd(LANES)] = Tile.Fuel;
+        grid.push(row);
+      }
     }
   }
 
-  addFull(30); // solid finish straight
+  add(30, Tile.Normal); // solid finish straight
 
   return { grid, length: grid.length };
 }
 
-// True if the tile at (row, lane) is solid ground.
-export function isSolid(grid: boolean[][], row: number, lane: number): boolean {
-  if (row < 0) return true; // treat pre-start as ground
-  if (row >= grid.length) return false;
-  if (lane < 0 || lane >= LANES) return false;
+// The tile at (row, lane). Off the start counts as ground; past the end and
+// outside the lanes count as empty.
+export function tileAt(grid: Tile[][], row: number, lane: number): Tile {
+  if (row < 0) return Tile.Normal;
+  if (row >= grid.length) return Tile.Gap;
+  if (lane < 0 || lane >= LANES) return Tile.Gap;
   return grid[row][lane];
+}
+
+// True if the tile is something you can rest on (anything but a gap).
+export function isSolid(grid: Tile[][], row: number, lane: number): boolean {
+  return tileAt(grid, row, lane) !== Tile.Gap;
 }

@@ -18,6 +18,17 @@ export const STRAFE_SPEED = 7; // lateral speed (units/sec)
 export const JUMP_V = 8.2; // initial upward velocity of a jump
 export const GRAVITY = 26; // downward acceleration
 
+// Tile effects
+export const BOOST_SPEED = 22; // speed pads accelerate you to this
+export const STEER_GRIP = 0.22; // lateral responsiveness on normal ground
+export const ICE_GRIP = 0.045; // slippery ground: barely responsive
+
+// Fuel economy
+export const FUEL_MAX = 100;
+export const FUEL_DRAIN = 2.4; // drained per second at cruise
+export const FUEL_BOOST_DRAIN = 3.0; // extra per second while throttling up
+export const FUEL_PICKUP = 28; // gained per fuel tile
+
 // The craft hovers slightly above the road; y is measured from the road top.
 export const PLAYER_Y = 0.42;
 
@@ -40,6 +51,11 @@ export const COLORS = {
   bg: '#05060f',
   roadA: '#3b4b90',
   roadB: '#2b3870',
+  // Special tiles
+  ice: '#86c5ff', // slippery
+  boost: '#37e0a0', // speed pad (glows)
+  lava: '#ff4326', // lethal (glows)
+  fuel: '#c9ff3d', // refuel pickup (glows)
   // Craft palette
   hull: '#ff6b35', // main body
   hullDark: '#2a2f3d', // wings, engine housings, underside
