@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
 import type { Input } from './Scene';
@@ -15,38 +15,52 @@ interface GestureControlsProps {
 }
 
 // Steering is a full-screen virtual flight stick; jump is a dedicated button.
-// Wherever you press becomes neutral; drag from there to fly:
-//   - horizontal drag  -> steer (proportional)
+//   - horizontal drag -> steer (proportional)
 //   - vertical drag     -> boost (up) / brake (down)
-// Releasing recenters to straight-ahead cruise. The JUMP button is edge-
-// triggered: the game loop consumes the flag, so press-in is enough.
+//   - JUMP button       -> jump (edge-triggered on touch-down)
+//
+// The button is a gesture-handler Tap rather than a Pressable: while the pan is
+// active (you're steering), iOS would otherwise cancel a Pressable's touch
+// before it registers. Both gestures are marked simultaneous so a second finger
+// can hit JUMP while the first keeps steering.
 export default function GestureControls({ input }: GestureControlsProps) {
   const [showHint, setShowHint] = useState(true);
+  const [jumpPressed, setJumpPressed] = useState(false);
 
-  const pan = useMemo(
-    () =>
-      Gesture.Pan()
-        .runOnJS(true)
-        .onBegin(() => setShowHint(false))
-        .onUpdate((e) => {
-          const dx = e.translationX;
-          const dy = e.translationY;
-          input.steer =
-            Math.abs(dx) < GESTURE_DEADZONE
-              ? 0
-              : clamp(dx / STEER_TRAVEL, -1, 1);
-          // Screen y grows downward, so negate: drag up -> positive throttle.
-          input.throttle =
-            Math.abs(dy) < GESTURE_DEADZONE
-              ? 0
-              : clamp(-dy / THROTTLE_TRAVEL, -1, 1);
-        })
-        .onFinalize(() => {
-          input.steer = 0;
-          input.throttle = 0;
-        }),
-    [input]
-  );
+  const { pan, jumpTap } = useMemo(() => {
+    const jumpTap = Gesture.Tap()
+      .runOnJS(true)
+      .onBegin(() => {
+        input.jump = true; // fire on touch-down for snappy response
+        setJumpPressed(true);
+      })
+      .onFinalize(() => setJumpPressed(false));
+
+    const pan = Gesture.Pan()
+      .runOnJS(true)
+      .onBegin(() => setShowHint(false))
+      .onUpdate((e) => {
+        const dx = e.translationX;
+        const dy = e.translationY;
+        input.steer =
+          Math.abs(dx) < GESTURE_DEADZONE ? 0 : clamp(dx / STEER_TRAVEL, -1, 1);
+        // Screen y grows downward, so negate: drag up -> positive throttle.
+        input.throttle =
+          Math.abs(dy) < GESTURE_DEADZONE
+            ? 0
+            : clamp(-dy / THROTTLE_TRAVEL, -1, 1);
+      })
+      .onFinalize(() => {
+        input.steer = 0;
+        input.throttle = 0;
+      });
+
+    // Let steering and the jump button be recognized at the same time.
+    pan.simultaneousWithExternalGesture(jumpTap);
+    jumpTap.simultaneousWithExternalGesture(pan);
+
+    return { pan, jumpTap };
+  }, [input]);
 
   return (
     <>
@@ -61,14 +75,11 @@ export default function GestureControls({ input }: GestureControlsProps) {
         </View>
       </GestureDetector>
 
-      <Pressable
-        onPressIn={() => {
-          input.jump = true;
-        }}
-        style={({ pressed }) => [styles.jumpBtn, pressed && styles.jumpPressed]}
-      >
-        <Text style={styles.jumpText}>JUMP</Text>
-      </Pressable>
+      <GestureDetector gesture={jumpTap}>
+        <View style={[styles.jumpBtn, jumpPressed && styles.jumpPressed]}>
+          <Text style={styles.jumpText}>JUMP</Text>
+        </View>
+      </GestureDetector>
     </>
   );
 }
