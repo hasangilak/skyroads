@@ -19,7 +19,7 @@ export const JUMP_V = 8.2; // initial upward velocity of a jump
 export const GRAVITY = 26; // downward acceleration
 
 // The craft hovers slightly above the road; y is measured from the road top.
-export const PLAYER_Y = 0.3;
+export const PLAYER_Y = 0.42;
 
 // Rendering window: how many rows of road we draw around the craft.
 export const VISIBLE_AHEAD = 70;
@@ -35,8 +35,14 @@ export const COLORS = {
   bg: '#05060f',
   roadA: '#3b4b90',
   roadB: '#2b3870',
-  player: '#ff6b35',
-  cockpit: '#ffd23f',
+  // Craft palette
+  hull: '#ff6b35', // main body
+  hullDark: '#2a2f3d', // wings, engine housings, underside
+  accent: '#ffd23f', // dorsal stripe / trim
+  canopy: '#8fe0ff', // tinted cockpit glass
+  engine: '#ff8a3d', // thruster flame
+  engineGlow: '#ffd06b', // inner engine ring
+  light: '#5fe6ff', // wingtip nav lights
 } as const;
 
 export const clamp = (v: number, lo: number, hi: number): number =>

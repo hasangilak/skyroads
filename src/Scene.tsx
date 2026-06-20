@@ -2,6 +2,7 @@ import React, { useMemo, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber/native';
 import * as THREE from 'three';
 
+import Ship from './Ship';
 import { isSolid, type Level } from './level';
 import {
   LANES,
@@ -235,22 +236,7 @@ function Scene({ level, input, onEnd, onDistance }: SceneProps) {
 
       {/* The craft. */}
       <group ref={playerRef}>
-        <mesh>
-          <boxGeometry args={[0.7, 0.25, 1.0]} />
-          <meshStandardMaterial
-            color={COLORS.player}
-            roughness={0.4}
-            metalness={0.3}
-          />
-        </mesh>
-        <mesh position={[0, 0.2, -0.05]}>
-          <boxGeometry args={[0.42, 0.2, 0.42]} />
-          <meshStandardMaterial
-            color={COLORS.cockpit}
-            roughness={0.3}
-            metalness={0.4}
-          />
-        </mesh>
+        <Ship />
       </group>
     </>
   );
