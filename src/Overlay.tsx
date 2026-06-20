@@ -1,26 +1,32 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import type { EndStatus } from './Scene';
+import type { EndReason } from './Scene';
 
 interface OverlayProps {
-  status: EndStatus;
+  reason: EndReason;
   distance: number;
   total: number;
   onRestart: () => void;
 }
 
-// Full-screen end-of-run panel for crash / finish, with a restart button.
+const TITLES: Record<EndReason, string> = {
+  win: 'FINISHED!',
+  crash: 'CRASHED',
+  fuel: 'OUT OF FUEL',
+};
+
+// Full-screen end-of-run panel, with a restart button.
 export default function Overlay({
-  status,
+  reason,
   distance,
   total,
   onRestart,
 }: OverlayProps) {
-  const won = status === 'won';
+  const won = reason === 'win';
   return (
     <View style={styles.root}>
       <Text style={[styles.title, won ? styles.win : styles.lose]}>
-        {won ? 'FINISHED!' : 'CRASHED'}
+        {TITLES[reason]}
       </Text>
       <Text style={styles.sub}>
         {won ? `You cleared all ${total} m` : `You reached ${distance} m`}

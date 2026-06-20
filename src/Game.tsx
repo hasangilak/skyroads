@@ -1,13 +1,14 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import CanvasView, { type EndStatus, type Input } from './Scene';
+import CanvasView, { type EndReason, type Input } from './Scene';
 import { generateLevel } from './level';
+import { FUEL_MAX } from './constants';
 import Hud from './Hud';
 import GestureControls from './GestureControls';
 import Overlay from './Overlay';
 
-type Status = 'playing' | EndStatus;
+type Status = 'playing' | EndReason;
 
 export default function Game() {
   // Shared, stable input object mutated by gestures and read by the game loop.
@@ -22,6 +23,7 @@ export default function Game() {
   const level = useMemo(() => generateLevel(), [runId]);
   const [status, setStatus] = useState<Status>('playing');
   const [distance, setDistance] = useState(0);
+  const [fuel, setFuel] = useState(FUEL_MAX);
 
   // Wrap the setters in stable callbacks so the memoized Canvas never
   // reconciles its 3D tree when only the HUD changes.
@@ -29,14 +31,20 @@ export default function Game() {
   setStatusRef.current = setStatus;
   const setDistRef = useRef(setDistance);
   setDistRef.current = setDistance;
-  const onEnd = useCallback((s: EndStatus) => setStatusRef.current(s), []);
-  const onDistance = useCallback((d: number) => setDistRef.current(d), []);
+  const setFuelRef = useRef(setFuel);
+  setFuelRef.current = setFuel;
+  const onEnd = useCallback((r: EndReason) => setStatusRef.current(r), []);
+  const onStats = useCallback((d: number, f: number) => {
+    setDistRef.current(d);
+    setFuelRef.current(f);
+  }, []);
 
   const restart = useCallback(() => {
     input.steer = 0;
     input.throttle = 0;
     input.jump = false;
     setDistance(0);
+    setFuel(FUEL_MAX);
     setStatus('playing');
     setRunId((r) => r + 1); // remounts the scene with a fresh level
   }, [input]);
@@ -48,13 +56,13 @@ export default function Game() {
         level={level}
         input={input}
         onEnd={onEnd}
-        onDistance={onDistance}
+        onStats={onStats}
       />
-      <Hud distance={distance} total={level.length} />
+      <Hud distance={distance} total={level.length} fuel={fuel} />
       <GestureControls input={input} />
       {status !== 'playing' && (
         <Overlay
-          status={status}
+          reason={status}
           distance={distance}
           total={level.length}
           onRestart={restart}
